@@ -1,0 +1,5 @@
+_domain=example.com,1.example.com
+eabKid=zeroSSLEabKid
+eabHmac=zeroSSLHMac
+runtimeDirectory=/run/serverOS-certauto
+stateDirectory=/var/lib/private/serverOS-TLS

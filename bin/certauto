@@ -1,0 +1,71 @@
+#!/usr/bin/bash
+
+function chmodSock() {
+	while true; do
+		chmod 722 ${runtimeDirectory}/certauto.sock >/dev/null 2>/dev/null
+		sleep 1s
+	done
+}
+
+function certNew() {
+	forwardTraffic &
+	chmodSock &
+	chmod 722 ${runtimeDirectory}/certauto.sock
+	certbot \
+		certonly \
+		--standalone \
+		--non-interactive \
+		--issuance-timeout 480 \
+		--force-renewal \
+		--renew-with-new-domains \
+		--staple-ocsp \
+		--eab-kid "${eabKid}" \
+		--eab-hmac-key "${eabHmac}" \
+		--server https://acme.zerossl.com/v2/DV90 \
+		--config-dir "${stateDirectory}"/Config \
+		--work-dir "${stateDirectory}" \
+		--logs-dir "${stateDirectory}"/Logs \
+		--cert-path "${stateDirectory}"/Certs \
+		--http-01-port "${certautoPort}" \
+		--http-01-address "${certautoHost}"  \
+		--agree-tos \
+		-m "${_email}" \
+		-d "${_domain}" \
+		--preferred-challenge http
+	kill %1
+}
+
+function forwardTraffic() {
+	socat -d -d UNIX-LISTEN:${runtimeDirectory}/certauto.sock,reuseaddr,fork TCP:${certautoHost}:${port}
+}
+
+function confCheck() {
+	for variableConf in _domain eabKid eabHmac runtimeDirectory; do
+		if [ -z ${${var}} ]; then
+			echo "[Fatal] Config not defined"
+			exit 1
+		fi
+	done
+}
+
+function portAvail() {
+	if [ -z ${certautoHost} ]; then
+		export certautoHost="127.0.0.3"
+	fi
+	netStatus=$(netstat -antu)
+	for port in $(shuf -i 10250-65530); do
+		if [[ "${certautoHost}:${port}" =~ ${netStatus} ]]; then
+			echo "[Warn] "${certautoHost}:${port}" currently occupied!"
+		else
+			export certautoPort=${port}
+			echo "[Info] Determined port ${certautoPort}"
+			break
+		fi
+	done
+}
+
+confCheck
+
+portAvail
+
+certNew

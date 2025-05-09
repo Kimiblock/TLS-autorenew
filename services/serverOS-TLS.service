@@ -1,0 +1,66 @@
+[Unit]
+After=network-online.target
+Requires=nginx.service
+Description=serverOS TLS renewer
+RequiresMountsFor=/var/lib/private/serverOS-TLS
+StartLimitIntervalSec=120
+StartLimitBurst=10
+RequiresMountsFor=/var/lib/private/serverOS-TLS
+Conflicts=serverOS-TLS-holder.service
+
+[Service]
+Slice=serverOS-proxy.slice
+
+IPAccounting=yes
+
+DynamicUser=yes
+Type=simple
+EnvironmentFile=/usr/share/serverOS/certauto/config
+ExecStart=bash /usr/lib/serverOS/certauto
+ExecStopPost=!/usr/bin/bash -c 'systemctl restart serverOS-TLS-holder'
+TimeoutStartSec=120
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=5s
+OOMPolicy=stop
+OOMScoreAdjust=-100
+
+StateDirectory=serverOS-TLS
+StateDirectoryMode=0700
+
+RuntimeDirectory=serverOS-certauto
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+DevicePolicy=closed
+
+ProtectSystem=strict
+ProtectHome=tmpfs
+PrivateTmp=disconnected
+PrivateDevices=yes
+ProtectHostname=yes
+ProtectClock=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+ProtectProc=invisible
+ProcSubset=pid
+PrivateUsers=yes
+
+SystemCallFilter=~@clock @debug @module @mount @reboot @swap @cpu-emulation @obsolete @timer @chown @setuid @privileged
+SystemCallErrorNumber=EPERM
+
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+PrivateNetwork=no
+DevicePolicy=closed
+
+UMask=077
